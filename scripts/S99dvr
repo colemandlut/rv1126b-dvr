@@ -1,0 +1,36 @@
+#!/bin/sh
+# Buildroot 开机自启脚本：放到 /etc/init.d/S99dvr
+# dvr-record 异常退出后 2 秒自动拉起
+
+DAEMON=/usr/bin/dvr-record
+CONF=/etc/dvr/dvr.json
+PIDFILE=/var/run/dvr-loop.pid
+
+start() {
+  [ -f "$PIDFILE" ] && kill -0 "$(cat $PIDFILE)" 2>/dev/null && { echo "dvr 已在运行"; return 0; }
+  (
+    trap 'kill -TERM $child 2>/dev/null; wait $child; exit 0' TERM INT
+    while true; do
+      $DAEMON -c $CONF >/dev/null 2>&1 &
+      child=$!
+      wait $child
+      sleep 2
+    done
+  ) &
+  echo $! > $PIDFILE
+  echo "dvr 已启动"
+}
+
+stop() {
+  [ -f "$PIDFILE" ] || return 0
+  kill -TERM "$(cat $PIDFILE)" 2>/dev/null
+  rm -f $PIDFILE
+  echo "dvr 已停止"
+}
+
+case "$1" in
+  start) start ;;
+  stop) stop ;;
+  restart) stop; sleep 1; start ;;
+  *) echo "用法: $0 {start|stop|restart}"; exit 1 ;;
+esac

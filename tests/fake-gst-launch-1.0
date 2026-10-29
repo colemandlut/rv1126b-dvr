@@ -1,0 +1,13 @@
+#!/bin/bash
+# 模拟 gst-launch：每 2 秒切一个分段，打印 splitmuxsink 消息；SIGINT 时封口退出
+loc=$(echo "$@" | sed -n 's/.*location=\([^ ]*\).*/\1/p')
+i=0; cur=""
+trap 'echo "Got message #9 from element \"splitmuxsink0\" (element): splitmuxsink-fragment-closed, location=(string)$cur, running-time=(guint64)0;"; exit 0' INT
+while true; do
+  cur=$(printf "$loc" $i)
+  echo "Got message #1 from element \"splitmuxsink0\" (element): splitmuxsink-fragment-opened, location=(string)$cur, running-time=(guint64)0;"
+  head -c 100000 /dev/zero > "$cur"
+  sleep 2 & wait $!
+  echo "Got message #2 from element \"splitmuxsink0\" (element): splitmuxsink-fragment-closed, location=(string)$cur, running-time=(guint64)0;"
+  i=$((i+1))
+done
