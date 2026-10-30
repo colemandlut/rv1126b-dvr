@@ -1,0 +1,33 @@
+{
+  // 第一阶段：单路 IMX415，mainpath 为 /dev/video23（/dev/video-camera0 是它的软链接）
+  "video": {
+    "device": "/dev/video-camera0",
+    "width": 1920,
+    "height": 1080,
+    "fps": 30,
+    "bitrate_kbps": 4000,
+    "gop": 30,
+    "rotation": 90,  // 编码器内部旋转，输出 1080x1920
+    // 占位符：{device} {width} {height} {fps} {bitrate} {bitrate_kbps} {gop} {rotation} {segment_ns} {location}
+    // MPEG-TS 封装 + 每个 IDR 带 VPS/SPS/PPS：掉电或被强杀时，已写入的部分仍可播放（板上实测）
+    "pipeline": "v4l2src device={device} ! video/x-raw,format=NV12,width={width},height={height},framerate={fps}/1 ! mpph265enc bps={bitrate} gop={gop} rotation={rotation} header-mode=each-idr ! h265parse config-interval=-1 ! splitmuxsink location={location} max-size-time={segment_ns} send-keyframe-requests=true muxer=mpegtsmux"
+  },
+  "storage": {
+    "root": "/mnt/sdcard/DVR",
+    "require_mount": "/mnt/sdcard",
+    "fallback_root": "/userdata/dvr/rec",
+    "segment_seconds": 60,
+    "min_free_mb": 1024,
+    "event_max_percent": 20,
+    "channel": "ch1"
+  },
+  "event": { "pre_seconds": 10, "post_seconds": 20 },
+  // 掉电检测电路做好后填入 GPIO 编号并打开
+  "power_fail": { "enabled": false, "gpiochip": "/dev/gpiochip0", "line": -1, "active_low": true,
+                  "finalize_timeout_ms": 1500, "recover_ms": 2000 },
+  "watchdog": { "enabled": false, "device": "/dev/watchdog", "timeout_s": 15,
+                "max_restarts": 5, "restart_window_s": 600 },
+  "run_dir": "/run/dvr",
+  "log_path": "/userdata/dvr/dvr.log",
+  "debug": false
+}
