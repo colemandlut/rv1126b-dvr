@@ -18,6 +18,14 @@ int main() {
       "splitmuxsink-fragment-opened, location=(string)\"/a b/seg00001.ts\", running-time=(guint64)0;", kind, loc));
   CHECK(kind == "opened");
   CHECK(loc == "/a b/seg00001.ts");
+  // 板上实测的原文（带 sink 字段）
+  CHECK(parse_split_message(
+      "Got message #140 from element \"splitmuxsink0\" (element): splitmuxsink-fragment-closed, "
+      "location=(string)/userdata/dvrtest/seg000.mp4, running-time=(guint64)9116602723, "
+      "sink=(GstElement)\"\\(GstFileSink\\)\\ sink\";",
+      kind, loc));
+  CHECK(kind == "closed");
+  CHECK(loc == "/userdata/dvrtest/seg000.mp4");
   CHECK(!parse_split_message("Setting pipeline to PLAYING ...", kind, loc));
 
   // 模板替换
