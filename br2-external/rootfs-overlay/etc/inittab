@@ -1,0 +1,15 @@
+# DVR 专用系统 inittab（BusyBox init）
+# 顺序：早期挂载 -> 摄像头 3A -> 录像 -> 网络等其他服务
+# 调试版的串口登录行由 post-build.sh 追加
+
+::sysinit:/usr/libexec/dvr/early-init.sh
+
+# 录像相关进程最先拉起，退出后由 init 自动重启
+::respawn:/usr/bin/rkaiq_3A_server
+::respawn:/usr/bin/dvr-record -c /config/dvr.json
+
+# 录像起来以后再联网
+::respawn:/usr/libexec/dvr/modem.sh
+::once:/usr/libexec/dvr/late-init.sh
+
+::shutdown:/usr/libexec/dvr/shutdown.sh

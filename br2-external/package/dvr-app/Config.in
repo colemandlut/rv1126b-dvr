@@ -1,0 +1,12 @@
+config BR2_PACKAGE_DVR_APP
+	bool "dvr-app"
+	depends on BR2_INSTALL_LIBSTDCPP
+	select BR2_PACKAGE_JSON_FOR_MODERN_CPP
+	help
+	  DVR 应用程序（dvr-record 等），源码在仓库的 app/ 目录。
+
+config BR2_PACKAGE_DVR_APP_DEBUG_SHELL
+	bool "调试版：开放串口 root shell"
+	depends on BR2_PACKAGE_DVR_APP
+	help
+	  打开后在调试串口 ttyFIQ0 上提供登录 shell。发布版必须关闭。

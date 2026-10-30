@@ -29,7 +29,7 @@ cat /run/dvr/status.json       # 当前状态
 设备端（x86_64 Linux 主机，Ubuntu 需 `g++-aarch64-linux-gnu nlohmann-json3-dev cmake`）：
 
 ```sh
-cmake -B build-arm -DCMAKE_TOOLCHAIN_FILE=cmake/aarch64-linux-gnu.cmake
+cmake -S app -B build-arm -DCMAKE_TOOLCHAIN_FILE=app/cmake/aarch64-linux-gnu.cmake
 cmake --build build-arm -j
 aarch64-linux-gnu-strip build-arm/dvr-record
 ```
@@ -39,28 +39,45 @@ aarch64-linux-gnu-strip build-arm/dvr-record
 宿主机测试：
 
 ```sh
-cmake -B build-host -DDVR_TESTS=ON && cmake --build build-host -j
+cmake -S app -B build-host -DDVR_TESTS=ON && cmake --build build-host -j
 ctest --test-dir build-host --output-on-failure
-tests/run_sim.sh build-host/dvr-record   # 用假的 gst-launch 跑完整流程
+app/tests/run_sim.sh build-host/dvr-record   # 用假的 gst-launch 跑完整流程
 ```
 
-## 安装到板子
+## 专用系统（进行中）
+
+不在出厂系统上开发，改为用 SDK 的 Buildroot 编一套 DVR 专用精简系统：squashfs 只读根、A/B 双系统、录像优先启动。方案见《RV1126B DVR 专用系统架构方案》。
+
+```sh
+scripts/build.sh <SDK 目录> debug      # 调试版：串口 shell、SSH、调试工具
+scripts/build.sh <SDK 目录> release    # 发布版：关闭串口登录和 SSH
+```
+
+| 路径 | 内容 |
+| --- | --- |
+| `app/` | 应用程序源码、测试、示例配置 |
+| `br2-external/` | Buildroot 外部目录：配置片段、dvr-app 包、根文件系统覆盖层、post-build |
+| `br2-external/rootfs-overlay/etc/inittab` | 启动顺序：早期挂载 → 3A → dvr-record → 4G → 其他 |
+| `board/kernel/dvr.config` | 内核裁剪片段 |
+| `board/parameter.txt` | 分区表草案（A/B、config、data） |
+| `scripts/build.sh` | 一条命令编根文件系统（内核和打包待 SDK 到手后接上） |
+
+## 在出厂系统上测试（开发初期用）
 
 ```sh
 cp dvr-record /usr/bin/
-mkdir -p /etc/dvr && cp config/dvr.json /etc/dvr/
-cp scripts/S99dvr /etc/init.d/ && /etc/init.d/S99dvr start
+mkdir -p /etc/dvr && cp app/config/dvr.json /etc/dvr/
+/usr/bin/dvr-record -c /etc/dvr/dvr.json &
 ```
 
 日志在 `/userdata/dvr/dvr.log`。
 
-## 目录
+## 应用源码
 
 | 路径 | 内容 |
 | --- | --- |
-| `src/recorder.*` | 主循环：分段、事件、掉电、重启、看门狗 |
-| `src/storage.*` | 录像目录、命名、循环覆盖、事件配额 |
-| `src/pipeline.*` | gst-launch 子进程与消息解析 |
-| `src/gpio.*` `src/watchdog.*` | 掉电检测 GPIO、硬件看门狗 |
-| `config/dvr.json` | 示例配置（支持 `//` 注释） |
-| `scripts/S99dvr` | 开机自启脚本 |
+| `app/src/recorder.*` | 主循环：分段、事件、掉电、重启、看门狗 |
+| `app/src/storage.*` | 录像目录、命名、循环覆盖、事件配额 |
+| `app/src/pipeline.*` | gst-launch 子进程与消息解析 |
+| `app/src/gpio.*` `app/src/watchdog.*` | 掉电检测 GPIO、硬件看门狗 |
+| `app/config/dvr.json` | 示例配置（支持 `//` 注释） |

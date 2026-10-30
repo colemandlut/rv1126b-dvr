@@ -1,0 +1,7 @@
+# 发布版：关闭串口登录和 SSH（已确认）
+# BR2_PACKAGE_DVR_APP_DEBUG_SHELL is not set
+# BR2_PACKAGE_DROPBEAR is not set
+# BR2_PACKAGE_STRACE is not set
+# BR2_PACKAGE_GDB is not set
+# BR2_PACKAGE_FFMPEG is not set
+# BR2_TARGET_GENERIC_GETTY is not set
