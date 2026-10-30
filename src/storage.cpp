@@ -127,6 +127,13 @@ std::vector<Segment> Storage::list(bool event) const {
   return out;
 }
 
+void Storage::mark_open(const std::string& tmp_path, time_t start) {
+  FILE* f = fopen((tmp_path + ".start").c_str(), "w");
+  if (!f) return;
+  fprintf(f, "%lld\n", static_cast<long long>(start));
+  fclose(f);
+}
+
 bool Storage::commit(const std::string& tmp_path, time_t start, int duration_s, Segment& out) {
   out.seq = next_seq_++;
   out.start = start;
@@ -138,6 +145,7 @@ bool Storage::commit(const std::string& tmp_path, time_t start, int duration_s, 
     return false;
   }
   out.size = file_size(out.path);
+  unlink((tmp_path + ".start").c_str());
   sync_dir(root_ + "/normal");
   return true;
 }
@@ -163,15 +171,26 @@ int Storage::recover_tmp(int segment_seconds) {
   std::sort(names.begin(), names.end());
   for (const auto& name : names) {
     std::string p = tmp_dir() + "/" + name;
+    if (name.size() > 6 && name.compare(name.size() - 6, 6, ".start") == 0) {
+      // 对应的分段文件不在了就清掉记录
+      if (access(p.substr(0, p.size() - 6).c_str(), F_OK) != 0) unlink(p.c_str());
+      continue;
+    }
     struct stat st;
     if (stat(p.c_str(), &st) != 0) continue;
     if (st.st_size == 0) {
       unlink(p.c_str());
+      unlink((p + ".start").c_str());
       continue;
     }
-    Segment seg;
     time_t start = st.st_mtime - segment_seconds;
-    if (commit(p, start, 0, seg)) {
+    long long recorded = 0;
+    if (FILE* f = fopen((p + ".start").c_str(), "r")) {
+      if (fscanf(f, "%lld", &recorded) == 1 && recorded > 0) start = static_cast<time_t>(recorded);
+      fclose(f);
+    }
+    Segment seg;
+    if (commit(p, start, static_cast<int>(st.st_mtime - start), seg)) {
       LOGW("收回上次未正常结束的分段 %s (%llu 字节)", seg.path.c_str(), static_cast<unsigned long long>(seg.size));
       ++n;
     }

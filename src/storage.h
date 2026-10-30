@@ -29,11 +29,13 @@ class Storage {
   const std::string& root() const { return root_; }
   std::string tmp_dir() const { return root_ + "/.tmp"; }
 
+  // 分段开始写时记下开始时间（.tmp/<文件名>.start），断电后收回时据此命名
+  void mark_open(const std::string& tmp_path, time_t start);
   // 分段写完后移入 normal/，返回新的分段信息
   bool commit(const std::string& tmp_path, time_t start, int duration_s, Segment& out);
   // 把 normal/ 下的分段移入 event/
   bool lock(Segment& seg);
-  // 启动时把上次断电遗留在 .tmp 的分段收进 normal/（用文件修改时间推算开始时间）
+  // 启动时把上次断电遗留在 .tmp 的分段收进 normal/（开始时间取 .start 记录，没有则用修改时间推算）
   int recover_tmp(int segment_seconds);
   // 删除最旧的录像直到空间满足要求；返回删除的文件数
   int enforce_space(uint64_t min_free_bytes, int event_max_percent);

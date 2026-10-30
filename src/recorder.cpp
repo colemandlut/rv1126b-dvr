@@ -1,5 +1,6 @@
 #include "recorder.h"
 
+#include <algorithm>
 #include <cerrno>
 #include <csignal>
 #include <cstdio>
@@ -85,7 +86,10 @@ bool Recorder::start_pipeline() {
       {"bitrate_kbps", std::to_string(v.bitrate_kbps)},
       {"gop", std::to_string(v.gop)},
       {"rotation", std::to_string(v.rotation)},
-      {"segment_ns", std::to_string(static_cast<long long>(cfg_.storage.segment_seconds) * 1000000000LL)},
+      // 多加半个 GOP：splitmuxsink 在超过 max-size-time 后的下一个关键帧处切分，
+      // 正好等于分段时长时会提前一个 GOP 切，分段长度忽长忽短
+      {"segment_ns", std::to_string(static_cast<long long>(cfg_.storage.segment_seconds) * 1000000000LL +
+                                    500000000LL * v.gop / std::max(v.fps, 1))},
       {"location", storage_.tmp_dir() + "/seg%05d." + ext_},
   };
   std::string args = expand_template(v.pipeline, vars);
@@ -134,6 +138,7 @@ void Recorder::handle_line(const std::string& line) {
   }
   if (kind == "opened") {
     open_[loc] = time(nullptr);
+    storage_.mark_open(loc, open_[loc]);
     LOGD("分段开始 %s", loc.c_str());
   } else {
     on_segment_closed(loc);

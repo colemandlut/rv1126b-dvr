@@ -92,9 +92,12 @@ int main() {
   // 收回 .tmp 遗留分段，空文件直接删掉
   write_file(st2.tmp_dir() + "/seg00099.mp4", 500);
   write_file(st2.tmp_dir() + "/seg00100.mp4", 0);
+  st2.mark_open(st2.tmp_dir() + "/seg00099.mp4", t + 3600);
   CHECK(st2.recover_tmp(60) == 1);
   CHECK(access((st2.tmp_dir() + "/seg00100.mp4").c_str(), F_OK) != 0);
+  CHECK(access((st2.tmp_dir() + "/seg00099.mp4.start").c_str(), F_OK) != 0);
   CHECK(st2.list(false).back().seq == 9);
+  CHECK(st2.list(false).back().start == t + 3600);  // 用记录的开始时间命名
 
   std::string cmd = "rm -rf " + root;
   CHECK(system(cmd.c_str()) == 0);
